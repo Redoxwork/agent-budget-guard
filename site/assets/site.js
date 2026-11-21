@@ -62,6 +62,7 @@ async function loadJSON(path) {
 }
 
 const money = (v) => "$" + (Math.round(v * 100) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 });
+const secs = (v) => (v == null ? "–" : v < 0.1 ? "<0.1s" : v + "s");
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const chainOf = (url = "") => (url.includes("basescan") ? "base" : url.includes("uniscan") ? "unichain" : "lasna");
 const CHAIN_NAME = { base: "Base", unichain: "Unichain", lasna: "Lasna" };

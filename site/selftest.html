@@ -75,7 +75,7 @@ node scripts/selftest.js</pre>
           <p><span class="lbl">Result.</span> ${esc(r.detail || r.error || "")}</p>
         </div>
         <div class="proof">${(r.proof || []).map((p) => `<div><span class="tag ${chainOf(p.url)}">${CHAIN_NAME[chainOf(p.url)]}</span> <a class="tx" href="${p.url}" target="_blank" rel="noopener">${esc(p.label)}</a></div>`).join("")}</div>
-        <div class="result ${r.caught ? "" : "miss"}"><b>${r.caught ? (r.secs != null ? r.secs + "s" : "Held") : "Missed"}</b><span>${r.caught ? (r.secs != null ? "to freeze both chains" : "wallet stayed frozen") : ""}</span></div>
+        <div class="result ${r.caught ? "" : "miss"}"><b>${r.caught ? (r.secs != null ? secs(r.secs) : "Held") : "Missed"}</b><span>${r.caught ? (r.secs != null ? "to freeze both chains" : "wallet stayed frozen") : ""}</span></div>
       </article>`).join("");
   } catch (e) {
     document.getElementById("tests").innerHTML = `<p class="lede">No self-test results yet. Run <code>node scripts/selftest.js</code>.</p>`;

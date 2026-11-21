@@ -284,17 +284,17 @@
     const fastest = Math.min(...st.results.filter((r) => r.secs != null).map((r) => r.secs));
     const when = new Date(st.ranAt).toLocaleDateString([], { day: "numeric", month: "short" });
     document.getElementById("kicker").textContent = `Self-test on testnet: ${st.passed}/${st.total} attacks caught, ${when}`;
-    for (const id of ["stFast", "tagFast"]) document.getElementById(id).textContent = fastest + "s";
+    for (const id of ["stFast", "tagFast"]) document.getElementById(id).textContent = secs(fastest);
     document.getElementById("stPass").textContent = `${st.passed}/${st.total}`;
     const drain = st.results.find((r) => r.id === "slow-drain");
-    if (drain?.secs != null) document.getElementById("drainFast").textContent = drain.secs + "s";
+    if (drain?.secs != null) document.getElementById("drainFast").textContent = secs(drain.secs);
     document.getElementById("tests").innerHTML = st.results.map((r) => `
-      <div class="t"><div class="res"><b>${esc(r.title)}</b><span class="tag ${r.caught ? "good" : "bad"}">${r.caught ? (r.secs != null ? "Caught, " + r.secs + "s" : "Caught") : "Missed"}</span></div>
+      <div class="t"><div class="res"><b>${esc(r.title)}</b><span class="tag ${r.caught ? "good" : "bad"}">${r.caught ? (r.secs != null ? "Caught, " + secs(r.secs) : "Caught") : "Missed"}</span></div>
       <p>${esc(r.attack)}</p></div>`).join("");
   } catch (e) { document.getElementById("kicker").textContent = "Self-test on testnet"; }
   try {
     const run = await loadJSON("data/last-run.json");
-    if (run.reactionSecs != null) document.getElementById("storyFast").textContent = run.reactionSecs + "s";
+    if (run.reactionSecs != null) document.getElementById("storyFast").textContent = secs(run.reactionSecs);
   } catch {}
   // grow the drain bars when they scroll into view
   const bars = document.getElementById("bars");

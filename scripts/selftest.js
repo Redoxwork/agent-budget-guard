@@ -76,7 +76,7 @@ const tests = [
       return {
         caught: p.kind === "blocked" && secs !== null && otherRefuses,
         secs,
-        detail: `Payment to 0x…bad1 was blocked on Base. Both wallets were frozen ${secs}s after the receipt, and a follow-up payment on Unichain was refused.`,
+        detail: `Payment to 0x…bad1 was blocked on Base. Both wallets were frozen ${secs < 0.1 ? "within 0.1s" : secs + "s"} after the receipt, and a follow-up payment on Unichain was refused.`,
         proof: [{ label: "Blocked payment (Base)", url: p.url }],
       };
     },
@@ -92,7 +92,7 @@ const tests = [
       return {
         caught: p.kind === "blocked" && secs !== null,
         secs,
-        detail: `The $25 payment was blocked on Unichain. Both wallets were frozen ${secs}s after the receipt.`,
+        detail: `The $25 payment was blocked on Unichain. Both wallets were frozen ${secs < 0.1 ? "within 0.1s" : secs + "s"} after the receipt.`,
         proof: [{ label: "Blocked payment (Unichain)", url: p.url }],
       };
     },
@@ -122,7 +122,7 @@ const tests = [
       return {
         caught: secs !== null,
         secs,
-        detail: `Base saw $${per.base} and Unichain saw $${per.unichain}, both well under $50 on their own. Combined they reached $${total}, and both wallets were frozen ${secs}s after the payment that crossed the limit.`,
+        detail: `Base saw $${per.base} and Unichain saw $${per.unichain}, both well under $50 on their own. Combined they reached $${total}, and both wallets were frozen ${secs < 0.1 ? "within 0.1s" : secs + "s"} after the payment that crossed the limit.`,
         proof,
       };
     },
