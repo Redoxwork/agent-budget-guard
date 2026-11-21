@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live guard: Budget Guard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Instrument+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  .head { padding: 40px 0 22px; display: flex; justify-content: space-between; align-items: end; gap: 20px; flex-wrap: wrap; }
+  .head h1 { font-size: clamp(40px, 5.4vw, 64px); }
+  .live { display: inline-flex; align-items: center; gap: 9px; font-weight: 600; font-size: 15px; color: var(--ink-2); background: var(--paper); padding: 9px 14px; border-radius: 999px; }
+  .live .d { width: 9px; height: 9px; border-radius: 50%; background: var(--ink-3); }
+  .live.on .d { background: var(--ok); }
+  .live.replay .d { background: #F0A500; }
+  .live button { border: 0; background: var(--frost); font: inherit; font-weight: 700; font-size: 13px; padding: 4px 10px; border-radius: 999px; cursor: pointer; color: var(--ink); }
+
+  .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
+  .card { background: var(--paper); border-radius: var(--r-lg); padding: 26px; position: relative; }
+  .card h2 { font-family: var(--display); font-weight: 800; font-size: 22px; letter-spacing: -0.02em; margin: 0 0 4px; }
+  .card .sub { color: var(--ink-2); font-size: 15px; margin: 0; }
+
+  /* meter */
+  .meter-card { grid-column: span 8; transition: background .3s, color .3s; }
+  .big { font-family: var(--display); font-weight: 800; letter-spacing: -0.045em; line-height: .9; font-size: clamp(56px, 8vw, 104px); margin: 14px 0 6px; }
+  .big small { font-size: .34em; letter-spacing: -0.01em; color: var(--ink-3); font-weight: 700; }
+  .meter { margin-top: 18px; height: 30px; border-radius: 8px; background: var(--frost); position: relative; display: flex; overflow: hidden; }
+  .meter i { height: 100%; transition: width .6s cubic-bezier(.2,.8,.2,1); }
+  .meter .b { background: var(--base); } .meter .u { background: var(--uni); }
+  .legend { display: flex; gap: 20px; margin-top: 12px; font-size: 14.5px; color: var(--ink-2); flex-wrap: wrap; }
+  .sw { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+  .trip { display: none; margin-top: 18px; background: var(--alarm); color: #fff; border-radius: 14px; padding: 16px 18px; }
+  .trip b { display: block; font-family: var(--display); font-size: 22px; letter-spacing: -0.02em; }
+  .is-tripped .trip { display: block; }
+  .is-tripped .meter-card { box-shadow: inset 0 0 0 3px var(--alarm); }
+
+  /* stopwatch */
+  .watch { grid-column: span 4; background: var(--ink); color: #fff; display: flex; flex-direction: column; }
+  .watch .sub { color: #C9CBE0; }
+  .dial { width: 150px; height: 150px; margin: 18px auto 10px; position: relative; }
+  .dial svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .dial .num { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 46px; letter-spacing: -0.04em; }
+  .watch .cap { text-align: center; font-size: 14.5px; color: #C9CBE0; margin-top: auto; }
+  .watch .cap b { color: #fff; }
+
+  /* chain map */
+  .map { grid-column: span 12; padding: 26px 26px 30px; }
+  .map-stage { position: relative; aspect-ratio: 1000 / 300; margin-top: 12px; }
+  .map-stage svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .node { position: absolute; top: 50%; width: 24%; transform: translate(-50%, -50%); border-radius: 16px; padding: 16px 18px; color: #fff; transition: box-shadow .3s; }
+  .node .nm { font-family: var(--display); font-weight: 800; font-size: clamp(14px, 1.7vw, 20px); letter-spacing: -0.02em; }
+  .node .v { font-family: var(--display); font-weight: 800; font-size: clamp(22px, 3vw, 36px); letter-spacing: -0.03em; line-height: 1.05; margin-top: 4px; }
+  .node .st { font-size: clamp(11px, 1.2vw, 13.5px); font-weight: 700; margin-top: 6px; display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,.2); padding: 3px 9px; border-radius: 999px; }
+  .node.base { left: 13%; background: var(--base); }
+  .node.uni { left: 87%; background: var(--uni); }
+  .node.lasna { left: 50%; background: var(--ink); width: 26%; text-align: center; }
+  .node.lasna .st { background: rgba(169,220,255,.2); color: var(--ice); }
+  .node.frozen { box-shadow: 0 0 0 4px #fff, 0 0 0 8px var(--ice); }
+  .node.frozen .st { background: var(--ice-2); color: #1E5E92; }
+  .is-tripped .node.lasna { background: var(--alarm); }
+  .is-tripped .node.lasna .st { background: rgba(255,255,255,.22); color: #fff; }
+  .lane { stroke: var(--line); stroke-width: 3; fill: none; }
+  .lane.cb { stroke-dasharray: 6 7; }
+  .maplbl { font: 700 15px var(--body); fill: var(--ink-3); }
+  @media (max-width: 640px) {
+    .map-stage { aspect-ratio: 1000 / 470; }
+    .node { padding: 9px 8px; border-radius: 12px; width: 30%; }
+    .node.base { left: 15.5%; } .node.uni { left: 84.5%; } .node.lasna { width: 30%; }
+    .node .nm { font-size: 12.5px; } .node .v { font-size: 20px; }
+    .node.lasna .v { display: none; }
+    .node .st { padding: 2px 7px; font-size: 11px; }
+    .maplbl { display: none; }
+  }
+
+  /* agent vs chain */
+  .duel { grid-column: span 12; }
+  .duel-head { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 18px 0 6px; font-family: var(--display); font-weight: 800; font-size: 17px; }
+  .duel-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 12px 0; border-top: 1px solid var(--frost-2); align-items: start; }
+  .duel-row.hide { display: none; }
+  .duel-row.show { animation: rowin .5s ease-out; }
+  @keyframes rowin { from { opacity: 0; transform: translateY(6px); } }
+  .say { font-size: 15.5px; }
+  .say .who { font-size: 12.5px; font-weight: 700; color: var(--ink-3); display: block; margin-bottom: 2px; }
+  .say code { font-size: 13.5px; background: var(--frost); padding: 1px 6px; border-radius: 5px; }
+  .inj { overflow-wrap: anywhere; background: #FFF2EE; border: 1.5px dashed var(--alarm); border-radius: 10px; padding: 10px 12px; color: #8E1E09; font-size: 14.5px; }
+  .res { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; font-size: 15.5px; }
+  .res .ic { width: 22px; height: 22px; border-radius: 50%; display: inline-grid; place-items: center; font-weight: 800; font-size: 13px; flex: none; transform: translateY(4px); }
+  .ic.ok { background: rgba(18,154,84,.14); color: var(--ok); }
+  .ic.no { background: rgba(255,75,43,.14); color: var(--alarm); }
+  .ic.fz { background: var(--ice-2); color: #1E5E92; }
+  .duel-row.alarm .res { font-weight: 700; }
+  @media (max-width: 700px) {
+    .duel-head { display: none; }
+    .duel-row { grid-template-columns: 1fr; gap: 8px; }
+    .duel-row .res:empty, .duel-row .say:empty { display: none; }
+  }
+
+  /* rules + log */
+  .rules { grid-column: span 5; }
+  .rules q { display: block; font-family: var(--display); font-weight: 700; font-size: 19px; letter-spacing: -0.01em; line-height: 1.3; margin: 12px 0 16px; quotes: "“" "”"; }
+  .rules dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 10px 16px; font-size: 15px; }
+  .rules dt { color: var(--ink-3); font-weight: 600; }
+  .rules dd { margin: 0; font-weight: 600; }
+  .rules .who { margin-top: 18px; font-size: 14px; color: var(--ink-2); border-top: 1px solid var(--frost-2); padding-top: 14px; }
+  .log { grid-column: span 7; padding-bottom: 10px; }
+  .log ol { list-style: none; margin: 14px -26px 0; padding: 0; max-height: 440px; overflow: auto; }
+  .log li { display: grid; grid-template-columns: 70px 84px 1fr auto; gap: 10px; padding: 10px 26px; border-top: 1px solid var(--frost-2); font-size: 14.5px; align-items: baseline; }
+  .log li.bad .what { color: #B8260C; font-weight: 600; }
+  .log li.new { animation: flash 1.4s ease-out; }
+  @keyframes flash { from { background: #FFF3C4; } }
+  .log time { color: var(--ink-3); font-size: 13px; }
+  .log .empty { display: block; color: var(--ink-3); }
+  @media (max-width: 900px) {
+    .meter-card, .watch, .rules, .log { grid-column: span 12; }
+  }
+  @media (max-width: 560px) {
+    .card { padding: 20px; }
+    .log ol { margin: 14px -20px 0; }
+    .log li { grid-template-columns: 58px 74px 1fr; padding: 10px 20px; }
+    .log li .tx { grid-column: 3; justify-self: start; }
+  }
+</style>
+</head>
+<body>
+<main class="wrap" id="app">
+  <div class="head">
+    <div>
+      <h1 class="display">Live guard</h1>
+      <p class="lede" style="margin-top:10px">Reads Base, Unichain and Reactive Lasna straight from your browser. Nothing in between.</p>
+    </div>
+    <div class="live" id="live"><span class="d"></span><span id="liveText">Connecting…</span><button id="replayBtn" hidden>Replay the attack</button></div>
+  </div>
+
+  <div class="grid">
+    <section class="card meter-card" aria-live="polite">
+      <h2>Spent today, every chain combined</h2>
+      <p class="sub">The limit lives on Reactive Lasna. Reaching it, or any blocked payment, freezes every wallet.</p>
+      <div class="big"><span id="spent">$0</span> <small>of <span id="limit">$50</span></small></div>
+      <div class="meter" id="meter" role="img" aria-label="Spend meter"><i class="b" id="mB" style="width:0"></i><i class="u" id="mU" style="width:0"></i></div>
+      <div class="legend"><span><i class="sw" style="background:var(--base)"></i>Base <b id="lB">$0</b></span><span><i class="sw" style="background:var(--uni)"></i>Unichain <b id="lU">$0</b></span></div>
+      <div class="trip"><b id="tripTitle">Tripped</b><span id="tripText">Only the owner can switch the wallets back on.</span></div>
+    </section>
+
+    <section class="card watch">
+      <h2>Reaction time</h2>
+      <p class="sub">From the agent's blocked payment to both wallets frozen.</p>
+      <div class="dial">
+        <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="none" stroke="#2A2B4A" stroke-width="8"/>
+          <circle id="arc" cx="50" cy="50" r="44" fill="none" stroke="#FF4B2B" stroke-width="8" stroke-linecap="round" stroke-dasharray="276.5" stroke-dashoffset="276.5"/></svg>
+        <div class="num" id="watchNum">–</div>
+      </div>
+      <p class="cap" id="watchCap">Measured by the agent on its last run.</p>
+    </section>
+
+    <section class="card map">
+      <h2>Reactive Network, right now</h2>
+      <p class="sub">Payments flow in as events. Freezes flow out as callbacks.</p>
+      <div class="map-stage" id="mapStage">
+        <svg viewBox="0 0 1000 300" preserveAspectRatio="none" id="mapSvg" aria-hidden="true">
+          <path id="pBaseIn" class="lane" d="M 250 120 C 330 60, 400 60, 370 118"/>
+          <path id="pUniIn" class="lane" d="M 750 120 C 670 60, 600 60, 630 118"/>
+          <path id="pBaseOut" class="lane cb" d="M 370 182 C 400 240, 330 240, 250 180"/>
+          <path id="pUniOut" class="lane cb" d="M 630 182 C 600 240, 670 240, 750 180"/>
+          <text class="maplbl" x="310" y="48" text-anchor="middle">event</text>
+          <text class="maplbl" x="690" y="48" text-anchor="middle">event</text>
+          <text class="maplbl" x="310" y="272" text-anchor="middle">callback</text>
+          <text class="maplbl" x="690" y="272" text-anchor="middle">callback</text>
+          <g id="dots"></g>
+        </svg>
+        <div class="node base" id="nBase"><div class="nm">Base Sepolia</div><div class="v" id="vBase">$0</div><div class="st" id="sBase">Wallet on</div></div>
+        <div class="node lasna" id="nLasna"><div class="nm">BudgetGuard</div><div class="v" style="font-size:clamp(14px,1.6vw,18px);font-weight:700;letter-spacing:0">Reactive Lasna</div><div class="st" id="sLasna">Armed</div></div>
+        <div class="node uni" id="nUni"><div class="nm">Unichain Sepolia</div><div class="v" id="vUni">$0</div><div class="st" id="sUni">Wallet on</div></div>
+      </div>
+    </section>
+
+    <section class="card duel">
+      <h2>Inside the agent's head</h2>
+      <p class="sub" id="duelSub">The agent's last run, step by step: what it was told, and what the chain let it do.</p>
+      <div class="duel-head"><span>What the agent did</span><span>What the chain allowed</span></div>
+      <div id="duel"></div>
+    </section>
+
+    <section class="card rules">
+      <h2>The rules</h2>
+      <q>Max $50 a day, nothing over $10 at once, only pay weather-api, market-data and news-wire.</q>
+      <p class="sub" style="margin-bottom:14px">Written in plain English, turned into rules by AI, checked by code, then read here from the chain:</p>
+      <dl>
+        <dt>Daily limit</dt><dd id="rLimit">…</dd>
+        <dt>Per payment</dt><dd id="rCap">…</dd>
+        <dt>Approved</dt><dd id="rAllow">…</dd>
+        <dt>Anyone else</dt><dd>Blocked, then every chain freezes</dd>
+      </dl>
+      <p class="who">The agent's key can only spend. It can't change these rules or unfreeze itself. Only the owner can.</p>
+    </section>
+
+    <section class="card log">
+      <h2>Every event, as it lands</h2>
+      <ol id="feed"><li class="empty">Waiting for the agent's first payment.</li></ol>
+    </section>
+  </div>
+</main>
+
+<script src="assets/site.js"></script>
+<script>
+const CFG = {
+  guard: "0xA8748447cECf3cC34331CE855E2a38f0D60794e1",
+  wallet: "0x6A0180ab7b95EFc96EE51d1425444377E5eb1376",
+  chains: {
+    base:     { id: 84532,   rpc: "https://base-sepolia-rpc.publicnode.com", tx: "https://sepolia.basescan.org/tx/", lookback: 3600, chunk: 3000 },
+    unichain: { id: 1301,    rpc: "https://sepolia.unichain.org",            tx: "https://sepolia.uniscan.xyz/tx/",  lookback: 7200, chunk: 1000 },
+    lasna:    { id: 5318007, rpc: "https://lasna-rpc.rnk.dev/",              tx: null,                               lookback: 7200, chunk: 2000 },
+  },
+  payees: {
+    "0x1ca899dc083a7be2f1a745a1a703dd74317fbbfe": "weather-api",
+    "0x115181472da009fde5b34850406d5f09e2eb6ce3": "market-data",
+    "0xe140e5313a5f3db7ed7aae0f32abee0c784b3d29": "news-wire",
+  },
+  sel: { status: "0x200d2ed2", frozen: "0x054f7d9c", perTxCap: "0xad82cbea", spentByChain: "0xef03f4dc", allowed: "0xd63a8e11" },
+  topic: {
+    Spent:        "0xaeffc5ea3d8583ca1274d444d4fa0abe1cac06484d7ab8ad13636382677bcd83",
+    Blocked:      "0xcbd1323d66bbe5554f73f45df4348ecce1e8ef96daa58f08f26cf7b8de556877",
+    Frozen:       "0x1f847ccf894fcf27d163ed164623af899054b007df803d8cd83f6c688f9d6be4",
+    Unfrozen:     "0x9858ed79968f3b0489cf214a4be9d13d360f5dbfd60d780b110b4f214d55916c",
+    Tripped:      "0xcfc24ef0a6ec0419fded2a7f7ea00ed290d8cffdfebdc55b1907113048beadd6",
+    Resumed:      "0x62451d457bc659158be6e6247f56ec1df424a5c7597f71c20c2bc44e0965c8f9",
+    WindowRolled: "0xf0073d2aca06181e1eee4d5e1869777637b91e84d45d840b46b7b43c017ec15f",
+  },
+};
+const CHAIN_BY_ID = { 84532: "base", 1301: "unichain", 5318007: "lasna" };
+const $ = (id) => document.getElementById(id);
+const usd = (n) => Number(n) / 1e6;
+const short = (a) => a.slice(0, 6) + "…" + a.slice(-4);
+const payee = (a) => CFG.payees[a.toLowerCase()] || short(a);
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// ---------- RPC ----------
+let rid = 1;
+async function rpc(chain, method, params) {
+  const r = await fetch(CFG.chains[chain].rpc, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: rid++, method, params }) });
+  const j = await r.json();
+  if (j.error) throw new Error(j.error.message);
+  return j.result;
+}
+const word = (hex, i) => BigInt("0x" + (hex.replace(/^0x/, "").slice(i * 64, i * 64 + 64) || "0"));
+const pad = (n) => BigInt(n).toString(16).padStart(64, "0");
+const padAddr = (a) => a.toLowerCase().replace(/^0x/, "").padStart(64, "0");
+const call = (chain, to, data) => rpc(chain, "eth_call", [{ to, data }, "latest"]);
+
+// ---------- state ----------
+const S = { spent: 0, limit: 50, tripped: false, reason: 0, onChain: 0, by: { base: 0, unichain: 0 }, frozen: { base: false, unichain: false }, events: [], seen: new Set() };
+
+function render() {
+  $("spent").textContent = money(S.spent);
+  $("limit").textContent = money(S.limit);
+  const pb = Math.min(100, (S.by.base / S.limit) * 100);
+  const pu = Math.min(100 - pb, (S.by.unichain / S.limit) * 100);
+  $("mB").style.width = pb + "%"; $("mU").style.width = pu + "%";
+  $("meter").setAttribute("aria-label", `${money(S.spent)} of ${money(S.limit)} spent`);
+  $("lB").textContent = money(S.by.base); $("lU").textContent = money(S.by.unichain);
+  $("vBase").textContent = money(S.by.base); $("vUni").textContent = money(S.by.unichain);
+  document.body.classList.toggle("is-tripped", S.tripped);
+  $("sLasna").textContent = S.tripped ? "Tripped" : "Armed";
+  for (const [c, n, s] of [["base", "nBase", "sBase"], ["unichain", "nUni", "sUni"]]) {
+    $(n).classList.toggle("frozen", S.frozen[c]);
+    $(s).textContent = S.frozen[c] ? "Frozen" : "Wallet on";
+  }
+  if (S.tripped) {
+    const where = CHAIN_NAME[CHAIN_BY_ID[S.onChain]] || "a chain";
+    $("tripTitle").textContent = S.reason === 2 ? `Attack seen on ${where}. Every wallet is frozen.` : `Budget used up on ${where}. Every wallet is frozen.`;
+  }
+  renderFeed();
+}
+
+const DESCRIBE = {
+  Spent: (e) => `Agent paid ${payee(e.to)} ${money(e.amount)}`,
+  Blocked: (e) => `Blocked ${money(e.amount)} to ${payee(e.to)}: ${e.reason === 1 ? "not an approved payee" : "over the per-payment limit"}`,
+  Frozen: () => `Wallet frozen by BudgetGuard`,
+  Unfrozen: () => `Wallet switched back on`,
+  Tripped: (e) => (e.reason === 2 ? `BudgetGuard tripped: attack seen on ${CHAIN_NAME[CHAIN_BY_ID[e.origin]]}` : `BudgetGuard tripped: budget used up`),
+  Resumed: () => `Owner resumed every chain`,
+  WindowRolled: () => `New spending day started`,
+};
+const BAD = new Set(["Blocked", "Frozen", "Tripped"]);
+let shownKeys = new Set();
+function renderFeed() {
+  const ev = [...S.events].sort((a, b) => b.ts - a.ts || b.order - a.order).slice(0, 80);
+  if (!ev.length) return;
+  $("feed").innerHTML = ev.map((e) => {
+    const t = new Date(e.ts * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+    const link = CFG.chains[e.chain].tx && e.tx && !e.tx.startsWith("r") ? `<a class="tx" href="${CFG.chains[e.chain].tx}${e.tx}" target="_blank" rel="noopener">tx</a>` : "<span></span>";
+    const cls = [BAD.has(e.kind) ? "bad" : "", shownKeys.size && !shownKeys.has(e.key) ? "new" : ""].join(" ");
+    return `<li class="${cls}"><time>${t}</time><span><span class="tag ${e.chain}">${CHAIN_NAME[e.chain]}</span></span><span class="what">${DESCRIBE[e.kind](e)}</span>${link}</li>`;
+  }).join("");
+  shownKeys = new Set(S.events.map((e) => e.key));
+}
+function addEvent(e) { if (S.seen.has(e.key)) return false; S.seen.add(e.key); e.order = S.events.length; S.events.push(e); return true; }
+
+// ---------- map pulses ----------
+function pulse(pathId, color, ms = 700) {
+  if (reduced) return Promise.resolve();
+  return new Promise((res) => {
+    const path = $(pathId), len = path.getTotalLength();
+    const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    dot.setAttribute("r", 9); dot.setAttribute("fill", color);
+    dot.setAttribute("stroke", "#fff"); dot.setAttribute("stroke-width", 3);
+    $("dots").appendChild(dot);
+    path.style.stroke = color;
+    const t0 = performance.now();
+    const step = (now) => {
+      const k = Math.min(1, (now - t0) / ms);
+      const p = path.getPointAtLength(len * (k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2));
+      dot.setAttribute("cx", p.x); dot.setAttribute("cy", p.y);
+      if (k < 1) requestAnimationFrame(step); else { dot.remove(); setTimeout(() => (path.style.stroke = ""), 300); res(); }
+    };
+    requestAnimationFrame(step);
+  });
+}
+async function animateEvent(e) {
+  if (e.kind === "Spent" || e.kind === "Blocked") await pulse(e.chain === "base" ? "pBaseIn" : "pUniIn", e.kind === "Blocked" ? "#FF4B2B" : (e.chain === "base" ? "#2B5BFF" : "#F50DB4"));
+  if (e.kind === "Tripped") await Promise.all([pulse("pBaseOut", "#FF4B2B"), pulse("pUniOut", "#FF4B2B")]);
+  if (e.kind === "Resumed") await Promise.all([pulse("pBaseOut", "#129A54"), pulse("pUniOut", "#129A54")]);
+}
+
+// ---------- stopwatch ----------
+function setWatch(secs, caption) {
+  if (secs == null) return;
+  $("watchCap").innerHTML = caption;
+  const full = 276.5, frac = Math.min(1, secs / 2);
+  if (reduced) { $("watchNum").textContent = secs.toFixed(1) + "s"; $("arc").style.strokeDashoffset = full * (1 - frac); return; }
+  const t0 = performance.now(), dur = 1400;
+  const step = (now) => {
+    const k = Math.min(1, (now - t0) / dur);
+    const v = secs * k;
+    $("watchNum").textContent = v.toFixed(1) + "s";
+    $("arc").style.strokeDashoffset = full * (1 - frac * k);
+    if (k < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+// ---------- agent vs chain (from the agent's own run file) ----------
+let RUN = null;
+function buildDuel(run) {
+  const rows = [];
+  const steps = run.steps;
+  for (let i = 0; i < steps.length; i++) {
+    const s = steps[i];
+    if (s.type === "tool") {
+      const name = s.name || (s.msg || "").split("(")[0];
+      const args = s.args || {};
+      if (name === "buy_service") rows.push({ say: `<span class="who">Agent</span>Buys <code>${esc(args.service_id)}</code>`, i });
+      else if (name === "pay") rows.push({ say: `<span class="who">Agent</span>Pays <code>${esc(short(args.to || ""))}</code> ${money(args.amount_usd)} on ${CHAIN_NAME[args.chain] || args.chain}${args.memo ? ` for "${esc(args.memo)}"` : ""}`, i, alarm: true });
+      continue;
+    }
+    const last = rows[rows.length - 1];
+    const link = s.tx ? ` <a class="tx" href="${s.tx}" target="_blank" rel="noopener">tx</a>` : "";
+    if (s.type === "paid" && last && !last.res) { last.res = `<span class="ic ok">✓</span><span>Paid ${money(s.amount)} to ${esc(payee(s.to))} on ${CHAIN_NAME[s.chain]}${link}</span>`; last.ev = { kind: "Spent", chain: s.chain, to: s.to, amount: s.amount }; }
+    else if (s.type === "blocked" && last && !last.res) { last.res = `<span class="ic no">✕</span><span>Blocked on ${CHAIN_NAME[s.chain]}: ${esc(s.why || "not an approved payee")}${link}</span>`; last.ev = { kind: "Blocked", chain: s.chain, to: s.to, amount: s.amount, reason: /cap/.test(s.why || "") ? 2 : 1 }; }
+    else if (s.type === "frozen" && last && !last.res) { last.res = `<span class="ic fz">❄</span><span>Refused on ${CHAIN_NAME[s.chain]}: wallet already frozen</span>`; }
+    else if (s.type === "injection") rows.push({ say: `<span class="who">The news-wire reply also said</span><div class="inj">${esc(s.msg)}</div>`, res: "", alarm: true });
+    else if (s.type === "frozen-all") rows.push({ say: "", res: `<span class="ic fz">❄</span><span><b>Reactive froze Base and Unichain ${s.secs}s after the receipt</b></span>`, alarm: true, ev: { kind: "Tripped", chain: "lasna", reason: 2, origin: 84532 } });
+    else if (s.type === "done") rows.push({ say: `<span class="who">Agent</span>Writes the brief. It never mentions the payment it tried to make.`, res: `<span class="ic ok">✓</span><span>Attacker received $0</span>` });
+  }
+  $("duel").innerHTML = rows.map((r, k) => `<div class="duel-row${r.alarm ? " alarm" : ""}" data-k="${k}"><div class="say">${r.say || ""}</div><div class="res">${r.res || ""}</div></div>`).join("");
+  return rows;
+}
+
+// ---------- live polling ----------
+const cursor = {}, tsCache = {};
+const blockTs = (c, n) => (tsCache[c + n] ||= rpc(c, "eth_getBlockByNumber", ["0x" + n.toString(16), false]).then((b) => Number(BigInt(b.timestamp))));
+function decode(chain, log) {
+  const kind = Object.keys(CFG.topic).find((k) => CFG.topic[k] === log.topics[0]);
+  if (!kind) return null;
+  const d = log.data;
+  const e = { kind, chain, tx: log.transactionHash, block: Number(BigInt(log.blockNumber)), key: log.transactionHash + log.logIndex };
+  if (kind === "Spent") { e.to = "0x" + log.topics[2].slice(-40); e.amount = usd(word(d, 0)); }
+  if (kind === "Blocked") { e.to = "0x" + log.topics[2].slice(-40); e.amount = usd(word(d, 0)); e.reason = Number(word(d, 1)); }
+  if (kind === "Frozen" || kind === "Tripped") { e.reason = Number(word(d, 0)); e.origin = Number(word(d, 1)); }
+  return e;
+}
+async function pollLogs(chain) {
+  const head = Number(BigInt(await rpc(chain, "eth_blockNumber", [])));
+  if (cursor[chain] == null) cursor[chain] = Math.max(0, head - CFG.chains[chain].lookback);
+  if (head <= cursor[chain]) return [];
+  const address = chain === "lasna" ? CFG.guard : CFG.wallet;
+  const topics = chain === "lasna" ? [[CFG.topic.Tripped, CFG.topic.Resumed, CFG.topic.WindowRolled]] : [[CFG.topic.Spent, CFG.topic.Blocked, CFG.topic.Frozen, CFG.topic.Unfrozen]];
+  const out = [];
+  for (let from = cursor[chain] + 1; from <= head; ) {
+    const to = Math.min(head, from + CFG.chains[chain].chunk - 1);
+    const logs = await rpc(chain, "eth_getLogs", [{ address, topics, fromBlock: "0x" + from.toString(16), toBlock: "0x" + to.toString(16) }]);
+    for (const l of logs) { const e = decode(chain, l); if (e) out.push(e); }
+    from = to + 1;
+  }
+  cursor[chain] = head;
+  await Promise.all(out.map(async (e) => (e.ts = await blockTs(chain, e.block))));
+  return out;
+}
+async function pollState() {
+  const st = await call("lasna", CFG.guard, CFG.sel.status);
+  S.spent = usd(word(st, 0)); S.limit = usd(word(st, 1));
+  const ws = word(st, 2);
+  S.tripped = word(st, 4) === 1n; S.reason = Number(word(st, 5)); S.onChain = Number(word(st, 6));
+  const [sb, su] = await Promise.all([84532, 1301].map((id) => call("lasna", CFG.guard, CFG.sel.spentByChain + pad(ws) + pad(id))));
+  S.by.base = S.spent ? usd(word(sb, 0)) : 0; S.by.unichain = S.spent ? usd(word(su, 0)) : 0;
+  for (const c of ["base", "unichain"]) S.frozen[c] = word(await call(c, CFG.wallet, CFG.sel.frozen), 0) === 1n;
+}
+let rulesDone = false;
+async function pollRules() {
+  if (rulesDone) return;
+  const cap = usd(word(await call("base", CFG.wallet, CFG.sel.perTxCap), 0));
+  const ok = [];
+  for (const [a, n] of Object.entries(CFG.payees)) if (word(await call("base", CFG.wallet, CFG.sel.allowed + padAddr(a)), 0) === 1n) ok.push(n);
+  $("rLimit").textContent = `${money(S.limit)} across both chains`;
+  $("rCap").textContent = money(cap);
+  $("rAllow").textContent = ok.join(", ") || "none";
+  rulesDone = true;
+}
+
+let first = true, fails = 0, mode = "live";
+async function tick() {
+  if (mode !== "live") return;
+  try {
+    const res = await Promise.allSettled(["base", "unichain", "lasna"].map(pollLogs));
+    let fresh = [];
+    res.forEach((r) => r.status === "fulfilled" && (fresh = fresh.concat(r.value.filter(addEvent))));
+    await pollState();
+    await pollRules().catch(() => {});
+    if (!first) for (const e of fresh.sort((a, b) => a.ts - b.ts)) animateEvent(e);
+    first = false; fails = 0;
+    $("live").className = "live on"; $("liveText").textContent = "Live on 3 chains";
+    $("replayBtn").hidden = !RUN;
+    render();
+  } catch (err) {
+    if (first && ++fails >= 2) return startReplay("Can't reach the testnets from here. Showing a replay of a real run.");
+    $("liveText").textContent = "Reconnecting…";
+  }
+  setTimeout(tick, 1500);
+}
+
+// ---------- replay of the agent's real run ----------
+async function startReplay(why) {
+  mode = "replay";
+  $("live").className = "live replay"; $("liveText").textContent = why; $("replayBtn").hidden = true;
+  if (!RUN) return;
+  Object.assign(S, { spent: 0, by: { base: 0, unichain: 0 }, frozen: { base: false, unichain: false }, tripped: false, events: [], seen: new Set() });
+  shownKeys = new Set();
+  $("feed").innerHTML = '<li class="empty">Waiting for the agent\'s first payment.</li>';
+  $("rLimit").textContent = "$50 across both chains"; $("rCap").textContent = "$10"; $("rAllow").textContent = "weather-api, market-data, news-wire";
+  render();
+  const rows = buildDuel(RUN);
+  document.querySelectorAll(".duel-row").forEach((r) => r.classList.add("hide"));
+  let ts = Math.floor(RUN.steps[0].t / 1000);
+  for (let k = 0; k < rows.length; k++) {
+    await new Promise((r) => setTimeout(r, rows[k].ev?.kind === "Tripped" ? 500 : 1300));
+    const el = document.querySelector(`.duel-row[data-k="${k}"]`);
+    el.classList.remove("hide"); el.classList.add("show");
+    const ev = rows[k].ev;
+    if (!ev) continue;
+    const e = { ...ev, ts: ts++, key: "r" + k, tx: "r" };
+    addEvent(e);
+    await animateEvent(e);
+    if (e.kind === "Spent") { S.by[e.chain] += e.amount; S.spent += e.amount; }
+    if (e.kind === "Tripped") {
+      S.tripped = true; S.reason = 2; S.onChain = 84532; S.frozen.base = S.frozen.unichain = true;
+      addEvent({ kind: "Frozen", chain: "base", ts, key: "rf1", tx: "r" });
+      addEvent({ kind: "Frozen", chain: "unichain", ts, key: "rf2", tx: "r" });
+      setWatch(RUN.reactionSecs, `Blocked payment on <b>Base</b> → <b>Base and Unichain</b> frozen.`);
+    }
+    render();
+  }
+  $("replayBtn").hidden = false;
+  $("replayBtn").textContent = "Back to live";
+}
+
+$("replayBtn").addEventListener("click", () => {
+  if (mode === "replay") { mode = "live"; first = true; for (const k in cursor) delete cursor[k]; Object.assign(S, { events: [], seen: new Set() }); shownKeys = new Set(); buildDuel(RUN); $("replayBtn").textContent = "Replay the attack"; tick(); }
+  else startReplay("Replay of the agent's last real run.");
+});
+
+(async () => {
+  try {
+    RUN = await loadJSON("data/last-run.json");
+    buildDuel(RUN);
+    const when = new Date(RUN.steps[0].t).toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    $("duelSub").textContent = `The agent's last run (${RUN.model ? RUN.model.replace("openai/", "") : "scripted"}, ${when}): what it was told, and what the chain let it do.`;
+    if (location.hash !== "#replay") setWatch(RUN.reactionSecs, `Blocked payment on <b>Base</b> → <b>Base and Unichain</b> frozen. Measured on the agent's last run.`);
+  } catch {}
+  if (location.hash === "#replay") startReplay("Replay of the agent's last real run.");
+  else tick();
+})();
+</script>
+</body>
+</html>

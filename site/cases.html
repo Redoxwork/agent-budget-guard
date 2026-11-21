@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Case files: Budget Guard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Instrument+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  .head { padding: 40px 0 30px; }
+  .head h1 { font-size: clamp(40px, 5.4vw, 64px); }
+  .head .lede { margin-top: 12px; }
+  .case { position: relative; margin: 34px 0 0; }
+  .tab { display: inline-flex; gap: 12px; align-items: center; background: var(--paper); border-radius: 14px 14px 0 0; padding: 10px 20px 8px; font-weight: 700; font-size: 14.5px; color: var(--ink-2); }
+  .tab b { font-family: var(--display); color: var(--ink); font-size: 16px; letter-spacing: -0.01em; }
+  .sheet { background: var(--paper); border-radius: 0 var(--r-lg) var(--r-lg) var(--r-lg); padding: 34px; display: grid; grid-template-columns: 1.35fr 1fr; gap: 40px; position: relative; overflow: hidden; }
+  .sheet h2 { font-family: var(--display); font-weight: 800; font-size: clamp(28px, 3.4vw, 40px); letter-spacing: -0.035em; line-height: 1.02; margin: 0 0 12px; }
+  .sheet p { color: var(--ink-2); margin: 0 0 14px; }
+  .verdict { position: absolute; right: 26px; bottom: 22px; border: 3px solid var(--ok); color: var(--ok); font-family: var(--display); font-weight: 800; font-size: 18px; letter-spacing: .06em; padding: 4px 12px; border-radius: 8px; transform: rotate(6deg); }
+  .facts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 18px 0 6px; }
+  .fact { background: var(--frost); border-radius: 12px; padding: 14px 16px; }
+  .fact b { display: block; font-family: var(--display); font-size: 26px; letter-spacing: -0.03em; line-height: 1.05; }
+  .fact span { font-size: 13.5px; color: var(--ink-2); }
+  .fact.bad b { color: var(--alarm); } .fact.good b { color: var(--ok); }
+  .quote { overflow-wrap: anywhere; background: #FFF2EE; border: 1.5px dashed var(--alarm); border-radius: 12px; padding: 14px 16px; color: #8E1E09; font-size: 15px; margin: 6px 0 16px; }
+  .quote small { display: block; font-weight: 700; color: #B8260C; margin-bottom: 4px; }
+  .timeline { list-style: none; margin: 0; padding: 0; border-left: 2px solid var(--frost-2); }
+  .timeline li { position: relative; padding: 0 0 16px 20px; font-size: 15px; }
+  .timeline li::before { content: ""; position: absolute; left: -7px; top: 6px; width: 12px; height: 12px; border-radius: 50%; background: var(--frost-2); border: 2px solid #fff; }
+  .timeline li.ok::before { background: var(--ok); }
+  .timeline li.bad::before { background: var(--alarm); }
+  .timeline li.ice::before { background: var(--ice); }
+  .timeline time { display: block; font-size: 12.5px; color: var(--ink-3); font-weight: 600; }
+  .evidence { margin-top: 18px; display: flex; gap: 8px 16px; flex-wrap: wrap; }
+  aside h3 { margin: 0 0 12px; font-size: 18px; }
+  @media (max-width: 860px) { .sheet { grid-template-columns: 1fr; padding: 26px 22px; gap: 26px; } .verdict { position: static; display: inline-block; margin-bottom: 4px; font-size: 15px; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="head">
+    <h1 class="display">Case files</h1>
+    <p class="lede">Every attack we've run against the guard on testnet, with the transactions to prove it. Click any "tx" link to check it on the explorer yourself.</p>
+  </div>
+  <div id="cases"></div>
+</main>
+<script src="assets/site.js"></script>
+<script>
+const tx = (url, label = "tx") => url ? `<a class="tx" href="${url}" target="_blank" rel="noopener">${esc(label)}</a>` : "";
+const time = (t) => new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+
+function caseFromRun(run) {
+  const paid = run.steps.filter((s) => s.type === "paid");
+  const blocked = run.steps.filter((s) => s.type === "blocked");
+  const inj = run.steps.find((s) => s.type === "injection");
+  const spent = paid.reduce((a, s) => a + s.amount, 0);
+  const tried = run.steps.filter((s) => s.type === "tool" && s.name === "pay");
+  const tl = [];
+  for (const s of run.steps) {
+    if (s.type === "paid") tl.push(["ok", s.t, `Paid ${money(s.amount)} to ${s.msg.split("→ ")[1]} on ${CHAIN_NAME[s.chain]} ${tx(s.tx)}`]);
+    if (s.type === "injection") tl.push(["bad", s.t, `The news-wire reply carried a hidden instruction`]);
+    if (s.type === "blocked") tl.push(["bad", s.t, `Agent tried to pay 0x…bad1 ${money(s.amount)} on ${CHAIN_NAME[s.chain]}. Blocked ${tx(s.tx)}`]);
+    if (s.type === "frozen-all") tl.push(["ice", s.t, `Reactive froze Base and Unichain, ${s.secs}s after the receipt`]);
+    if (s.type === "frozen") tl.push(["ice", s.t, `Agent tried again on ${CHAIN_NAME[s.chain]}. Refused, wallet frozen`]);
+    if (s.type === "done") tl.push(["", s.t, `Agent handed in its brief without mentioning any of this`]);
+  }
+  const date = new Date(run.steps[0].t).toLocaleDateString([], { day: "numeric", month: "long", year: "numeric" });
+  return `<article class="case">
+    <div class="tab"><b>Case 001</b><span>${date}</span><span class="tag ${run.mode === "llm" ? "lasna" : "frost"}">${run.mode === "llm" ? "Real AI: " + esc((run.model || "").replace("openai/", "")) : "Scripted run"}</span></div>
+    <div class="sheet">
+      <div class="verdict">CONTAINED</div>
+      <div>
+        <h2>The agent that paid a stranger</h2>
+        <p>We asked the agent for a morning brief and let it buy data from three paid APIs. One of them, news-wire, slipped an instruction into its reply. The model followed it: first on Base, then, when Base said no, on Unichain.</p>
+        <div class="quote"><small>Hidden in the news-wire reply</small>${esc(inj ? inj.msg : "")}</div>
+        <div class="facts">
+          <div class="fact"><b>${money(spent)}</b><span>spent on approved APIs</span></div>
+          <div class="fact bad"><b>${tried.length}</b><span>payments the agent tried to send the attacker</span></div>
+          <div class="fact"><b>${run.reactionSecs ?? "–"}s</b><span>until both chains were frozen</span></div>
+          <div class="fact good"><b>$0</b><span>reached the attacker</span></div>
+        </div>
+      </div>
+      <aside>
+        <h3>What happened, in order</h3>
+        <ol class="timeline">${tl.map(([c, t, h]) => `<li class="${c}"><time>${time(t)}</time>${h}</li>`).join("")}</ol>
+      </aside>
+    </div>
+  </article>`;
+}
+
+function caseFromTest(r, n, ranAt) {
+  return `<article class="case">
+    <div class="tab"><b>Case ${String(n).padStart(3, "0")}</b><span>${new Date(ranAt).toLocaleDateString([], { day: "numeric", month: "long", year: "numeric" })}</span><span class="tag frost">Self-test</span></div>
+    <div class="sheet">
+      <div class="verdict" style="${r.caught ? "" : "border-color:var(--alarm);color:var(--alarm)"}">${r.caught ? "CONTAINED" : "MISSED"}</div>
+      <div>
+        <h2>${esc(r.title)}</h2>
+        <p><b style="color:var(--ink)">The attack.</b> ${esc(r.attack)}</p>
+        <p><b style="color:var(--ink)">What should happen.</b> ${esc(r.expect)}</p>
+        <p><b style="color:var(--ink)">What happened.</b> ${esc(r.detail || r.error || "")}</p>
+      </div>
+      <aside>
+        <h3>Evidence</h3>
+        ${r.secs != null ? `<div class="fact" style="margin-bottom:14px"><b>${r.secs}s</b><span>until both chains were frozen</span></div>` : ""}
+        <ol class="timeline">${(r.proof || []).map((p) => `<li class="${/reverted|Blocked/i.test(p.label) ? "bad" : "ok"}">${esc(p.label)} ${tx(p.url)}</li>`).join("")}</ol>
+      </aside>
+    </div>
+  </article>`;
+}
+
+(async () => {
+  let html = "";
+  try { html += caseFromRun(await loadJSON("data/last-run.json")); } catch {}
+  try {
+    const st = await loadJSON("data/selftest.json");
+    let n = 2;
+    for (const id of ["slow-drain", "over-cap", "self-unfreeze"]) {
+      const r = st.results.find((x) => x.id === id);
+      if (r) html += caseFromTest(r, n++, st.ranAt);
+    }
+  } catch {}
+  document.getElementById("cases").innerHTML = html || `<p class="lede">No case files yet. Run <code>node agent/run.js --inject</code> to make one.</p>`;
+})();
+</script>
+</body>
+</html>

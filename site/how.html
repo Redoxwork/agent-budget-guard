@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How it works: Budget Guard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Instrument+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  .head { padding: 40px 0 30px; }
+  .head h1 { font-size: clamp(40px, 5.4vw, 64px); }
+  .head .lede { margin-top: 12px; }
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .step { padding: 24px 22px; border-radius: var(--r-lg); }
+  .step .n { font-family: var(--display); font-weight: 800; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: #fff; font-size: 15px; }
+  .step h3 { font-size: 21px; margin: 14px 0 8px; }
+  .step p { margin: 0; color: var(--ink-2); font-size: 15.5px; }
+  .step code, .card code { font-size: 13.5px; background: var(--frost); padding: 1px 6px; border-radius: 5px; overflow-wrap: anywhere; }
+  @media (max-width: 960px) { .steps { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 560px) { .steps { grid-template-columns: 1fr; } }
+  .card { border-radius: var(--r-lg); padding: 30px; margin-top: 16px; }
+  .card h2 { font-family: var(--display); font-weight: 800; font-size: clamp(26px, 3vw, 34px); letter-spacing: -0.03em; margin: 0 0 8px; }
+  .card > p { color: var(--ink-2); margin: 0 0 18px; max-width: 70ch; }
+  .diagram { width: 100%; height: auto; margin-top: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th, td { text-align: left; padding: 12px 10px; border-top: 1px solid var(--frost-2); vertical-align: top; }
+  thead th { border-top: 0; font-family: var(--display); font-size: 15px; color: var(--ink-2); font-weight: 700; }
+  td.y { color: var(--ok); font-weight: 700; } td.n { color: var(--ink-3); }
+  .tbl { overflow-x: auto; }
+  .contracts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .ct { background: var(--frost); border-radius: 14px; padding: 18px; }
+  .ct b { display: block; font-family: var(--display); font-size: 18px; letter-spacing: -0.02em; margin: 8px 0 4px; }
+  .ct p { margin: 0 0 10px; font-size: 14.5px; color: var(--ink-2); }
+  @media (max-width: 860px) { .contracts { grid-template-columns: 1fr; } }
+  .limits { margin: 0; padding-left: 20px; display: grid; gap: 10px; color: var(--ink-2); }
+  .limits b { color: var(--ink); }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="head">
+    <h1 class="display">How it works</h1>
+    <p class="lede">Two wallets, one reactive contract, no bots. Here is what happens every time the agent pays for something.</p>
+  </div>
+
+  <div class="steps">
+    <div class="step glass"><span class="n">1</span><h3>The agent pays</h3><p>It calls <code>spend()</code> on its wallet on Base or Unichain. The wallet checks the approved-payee list and the per-payment cap on the spot.</p></div>
+    <div class="step glass"><span class="n">2</span><h3>The wallet emits an event</h3><p>A good payment emits <code>Spent</code>. A bad one doesn't revert. It emits <code>Blocked</code> so the attempt is visible.</p></div>
+    <div class="step glass"><span class="n">3</span><h3>Reactive reacts</h3><p>BudgetGuard on Lasna is subscribed to both wallets. Its <code>react()</code> adds every <code>Spent</code> to one total and treats any <code>Blocked</code> as an attack.</p></div>
+    <div class="step glass"><span class="n">4</span><h3>Callbacks freeze every chain</h3><p>When a rule breaks, BudgetGuard asks Reactive to call <code>freeze()</code> on every wallet. Each wallet only accepts it from Reactive's callback proxy, sent by BudgetGuard.</p></div>
+  </div>
+
+  <section class="card">
+    <h2>The whole system</h2>
+    <p>The limit lives on Reactive Network, not on either chain. That's why a slow drain spread over both chains still gets caught.</p>
+    <svg class="diagram" viewBox="0 0 1000 380" role="img" aria-label="The agent pays from wallets on Base and Unichain. Their events go to BudgetGuard on Reactive Lasna, which sends freeze callbacks to both wallets.">
+      <defs>
+        <marker id="a1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#8389A3"/></marker>
+        <marker id="a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#FF4B2B"/></marker>
+      </defs>
+      <g font-family="Instrument Sans, sans-serif">
+        <rect x="20" y="150" width="170" height="80" rx="16" fill="#12122A"/>
+        <text x="105" y="185" text-anchor="middle" fill="#fff" font-weight="700" font-size="18">AI agent</text>
+        <text x="105" y="208" text-anchor="middle" fill="#A9DCFF" font-size="13.5">spend-only key</text>
+
+        <rect x="330" y="40" width="230" height="100" rx="16" fill="#2B5BFF"/>
+        <text x="445" y="80" text-anchor="middle" fill="#fff" font-weight="700" font-size="18">AgentWallet</text>
+        <text x="445" y="104" text-anchor="middle" fill="#DCE5FF" font-size="13.5">Base Sepolia</text>
+        <rect x="330" y="240" width="230" height="100" rx="16" fill="#F50DB4"/>
+        <text x="445" y="280" text-anchor="middle" fill="#fff" font-weight="700" font-size="18">AgentWallet</text>
+        <text x="445" y="304" text-anchor="middle" fill="#FFE0F5" font-size="13.5">Unichain Sepolia</text>
+
+        <rect x="720" y="130" width="260" height="120" rx="18" fill="#fff" stroke="#12122A" stroke-width="2.5"/>
+        <text x="850" y="170" text-anchor="middle" fill="#12122A" font-weight="800" font-size="20">BudgetGuard</text>
+        <text x="850" y="194" text-anchor="middle" fill="#4B5069" font-size="13.5">Reactive Lasna</text>
+        <text x="850" y="222" text-anchor="middle" fill="#4B5069" font-size="13.5">one total for every chain</text>
+
+        <path d="M190 175 C 260 175, 260 95, 326 92" stroke="#8389A3" stroke-width="2.5" fill="none" marker-end="url(#a1)"/>
+        <path d="M190 205 C 260 205, 260 288, 326 290" stroke="#8389A3" stroke-width="2.5" fill="none" marker-end="url(#a1)"/>
+        <text x="200" y="128" fill="#4B5069" font-size="13.5" font-weight="600">spend()</text>
+        <text x="200" y="262" fill="#4B5069" font-size="13.5" font-weight="600">spend()</text>
+
+        <path d="M560 78 C 650 78, 660 150, 716 160" stroke="#8389A3" stroke-width="2.5" fill="none" marker-end="url(#a1)"/>
+        <path d="M560 302 C 650 302, 660 230, 716 220" stroke="#8389A3" stroke-width="2.5" fill="none" marker-end="url(#a1)"/>
+        <text x="600" y="62" fill="#4B5069" font-size="13.5" font-weight="600">Spent / Blocked event</text>
+        <text x="600" y="334" fill="#4B5069" font-size="13.5" font-weight="600">Spent / Blocked event</text>
+
+        <path d="M722 175 C 660 170, 640 130, 564 118" stroke="#FF4B2B" stroke-width="2.5" stroke-dasharray="8 6" fill="none" marker-end="url(#a2)"/>
+        <path d="M722 205 C 660 210, 640 250, 564 262" stroke="#FF4B2B" stroke-width="2.5" stroke-dasharray="8 6" fill="none" marker-end="url(#a2)"/>
+        <text x="585" y="150" fill="#C42B0F" font-size="13.5" font-weight="700">freeze()</text>
+        <text x="585" y="240" fill="#C42B0F" font-size="13.5" font-weight="700">freeze()</text>
+      </g>
+    </svg>
+  </section>
+
+  <section class="card">
+    <h2>Who can do what</h2>
+    <p>The agent's key is deliberately weak. Even a fully hijacked agent can only spend within the rules.</p>
+    <div class="tbl"><table>
+      <thead><tr><th></th><th>Spend</th><th>Change rules</th><th>Freeze wallets</th><th>Unfreeze</th><th>Withdraw funds</th></tr></thead>
+      <tbody>
+        <tr><th>Agent key</th><td class="y">Within the rules</td><td class="n">No</td><td class="n">No</td><td class="n">No</td><td class="n">No</td></tr>
+        <tr><th>BudgetGuard, via Reactive</th><td class="n">No</td><td class="n">No</td><td class="y">Yes, every chain</td><td class="y">When the owner resumes</td><td class="n">No</td></tr>
+        <tr><th>Owner</th><td class="n">No</td><td class="y">Yes</td><td class="n">No</td><td class="y">Yes</td><td class="y">Yes, even when frozen</td></tr>
+        <tr><th>Anyone else</th><td class="n">No</td><td class="n">No</td><td class="n">No</td><td class="n">No</td><td class="n">No</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="card">
+    <h2>The contracts</h2>
+    <p>All deployed on testnet and live right now.</p>
+    <div class="contracts">
+      <div class="ct"><span class="tag lasna">Reactive Lasna</span><b>BudgetGuard</b><p>Subscribes to both wallets, keeps the combined total for the day, trips and sends freeze callbacks.</p><code>0xA8748447cECf3cC34331CE855E2a38f0D60794e1</code></div>
+      <div class="ct"><span class="tag base">Base Sepolia</span><b>AgentWallet</b><p>Holds the agent's funds. Checks payees and the per-payment cap. Accepts freezes only from BudgetGuard.</p><a class="tx" href="https://sepolia.basescan.org/address/0x6A0180ab7b95EFc96EE51d1425444377E5eb1376" target="_blank" rel="noopener">0x6A0180ab…1376</a></div>
+      <div class="ct"><span class="tag unichain">Unichain Sepolia</span><b>AgentWallet</b><p>Same wallet on Unichain, same address. Both freeze together.</p><a class="tx" href="https://sepolia.uniscan.xyz/address/0x6A0180ab7b95EFc96EE51d1425444377E5eb1376" target="_blank" rel="noopener">0x6A0180ab…1376</a></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>What it doesn't do</h2>
+    <p>Honest limits, so you know where the edges are.</p>
+    <ul class="limits">
+      <li><b>One payment can cross the limit.</b> BudgetGuard sees a payment after it lands, so the payment that takes the total past $50 goes through. The per-payment cap keeps that overshoot small (at most $10 here).</li>
+      <li><b>It can't stop a bad purchase from an approved payee.</b> If the agent wastes money on an API you approved, that's within the rules until the daily limit.</li>
+      <li><b>The owner unfreezes by hand.</b> That's on purpose. After an attack, a human should look before the agent spends again.</li>
+      <li><b>Testnet only.</b> Mock dollars on Base Sepolia, Unichain Sepolia and Reactive Lasna.</li>
+    </ul>
+  </section>
+</main>
+<script src="assets/site.js"></script>
+</body>
+</html>

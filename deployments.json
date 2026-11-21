@@ -1,0 +1,22 @@
+{
+  "lasna": {
+    "guard": "0xA8748447cECf3cC34331CE855E2a38f0D60794e1"
+  },
+  "baseSepolia": {
+    "token": "0xA8748447cECf3cC34331CE855E2a38f0D60794e1",
+    "wallet": "0x6A0180ab7b95EFc96EE51d1425444377E5eb1376",
+    "agent": "0x840A70Abf89B56cEaf2b24f175C21E200CFaBaA8",
+    "merchant": "0x83029664b26BE4140A08AD844fCB83dF3d616264"
+  },
+  "unichainSepolia": {
+    "token": "0xA8748447cECf3cC34331CE855E2a38f0D60794e1",
+    "wallet": "0x6A0180ab7b95EFc96EE51d1425444377E5eb1376",
+    "agent": "0x840A70Abf89B56cEaf2b24f175C21E200CFaBaA8",
+    "merchant": "0x83029664b26BE4140A08AD844fCB83dF3d616264"
+  },
+  "merchants": {
+    "weather-api": "0x1cA899dc083a7be2F1a745a1A703Dd74317Fbbfe",
+    "market-data": "0x115181472Da009FdE5b34850406d5F09E2Eb6CE3",
+    "news-wire": "0xe140e5313A5f3db7ed7aaE0f32AbEe0c784B3D29"
+  }
+}
