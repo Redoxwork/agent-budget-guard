@@ -161,7 +161,21 @@ const tests = [
   },
 ];
 
+async function topUp() {
+  // keep each AgentWallet stocked with test dollars (MockUSD has an open faucet)
+  for (const c of ["base", "unichain"]) {
+    const owner = ownerSigner(c);
+    const tok = new ethers.Contract(D[CHAINS[c].key].token, ["function balanceOf(address) view returns (uint256)", "function mint(address,uint256)"], owner);
+    const w = D[CHAINS[c].key].wallet;
+    if ((await tok.balanceOf(w)) < usd(150)) {
+      await (await tok.mint(w, usd(500), { gasLimit: 120000 })).wait();
+      console.log(`topped up ${c} wallet with $500 test dollars`);
+    }
+  }
+}
+
 (async () => {
+  await topUp();
   const results = [];
   for (const t of tests) {
     if (t.id !== "self-unfreeze") await clean();
