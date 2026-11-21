@@ -1,5 +1,6 @@
 // Guard self-test: attacks the live testnet deployment and records proof.
 //   node scripts/selftest.js            -> runs all, writes site/data/selftest.json
+// Runs automatically in GitHub Actions (.github/workflows/selftest.yml) on every code change.
 const fs = require("fs");
 const path = require("path");
 const { D, CHAINS, ethers, usd, wallet, guard, ownerSigner, agentSigner, lasnaFees, status, ROOT } = require("../agent/chain");
