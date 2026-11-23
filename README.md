@@ -6,7 +6,7 @@ AI agents now hold wallets on several chains. Nothing stops one from blowing its
 
 Track: **Reactive Meets AI** — Reactive Omni Buildathon.
 
-**Demo video (3:36):** https://youtu.be/qGPGWZg9rWs
+**Demo video:** https://youtu.be/gAt_TCPffZo
 
 **Live site:** https://redoxwork.github.io/agent-budget-guard/ (the Live guard page reads all three chains straight from your browser)
 
