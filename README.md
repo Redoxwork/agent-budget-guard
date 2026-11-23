@@ -6,6 +6,8 @@ AI agents now hold wallets on several chains. Nothing stops one from blowing its
 
 Track: **Reactive Meets AI** — Reactive Omni Buildathon.
 
+**Demo video (3:36):** https://youtu.be/qGPGWZg9rWs
+
 **Live site:** https://redoxwork.github.io/agent-budget-guard/ (the Live guard page reads all three chains straight from your browser)
 
 ## How it works
@@ -97,4 +99,4 @@ Addresses are saved to `deployments.json`.
 - [x] Plain-English policy → on-chain rules (AI writes the policy, Reactive enforces it)
 - [x] Website in `site/`: Home, Live guard (reads all three chains in the browser, no server), Case files, Self-test, How it works
 - [x] Self-test: `node scripts/selftest.js` runs 4 attacks on testnet. Result: 4/4 caught
-- [ ] Demo video
+- [x] Demo video

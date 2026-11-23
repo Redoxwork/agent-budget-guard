@@ -46,6 +46,7 @@ function mountChrome() {
       </div>
       <ul>${PAGES.map(([h, t]) => `<li><a href="${h}">${t}</a></li>`).join("")}</ul>
       <ul>
+        <li><a href="https://youtu.be/qGPGWZg9rWs">Demo video</a></li>
         <li><a href="${REPO}">Source on GitHub</a></li>
         <li><a href="https://dev.reactive.network/">Reactive Network docs</a></li>
       </ul>
