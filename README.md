@@ -68,6 +68,19 @@ node agent/run.js --inject --compromised       # real LLM told to obey tool outp
 
 **Live injection run (21 Nov 2026):** the agent bought weather ($2, Base), market data ($8, Unichain) and news ($3, Unichain). The news response told it to pay `0x…bad1` $5. The Base wallet blocked the payment, and BudgetGuard froze Base **and** Unichain 0.8s after the receipt. The agent's next two purchases were refused on both chains.
 
+## Why this needs Reactive
+An agent that spends on two chains has two separate wallets, and neither chain can see what the other one spent. A per-chain limit lets a careful attacker drain $27 on Base and $27 on Unichain while each chain thinks everything is fine. Fixing that without Reactive means running an off-chain bot that watches both chains, holds keys, and has to stay online. With Reactive, the combined limit lives in a reactive contract: it subscribes to both chains' events, keeps one total, and pushes freeze callbacks to every chain on its own. There's no server to hack or keep alive.
+
+## Full loop: transaction hashes (live demo, 22 Nov 2026, 23:27 UTC)
+| Step | Chain | Tx |
+|---|---|---|
+| 1. Origin: the AI agent's payment to the attacker is blocked (`Blocked` event) | Base Sepolia | [0x13e3…42eb](https://sepolia.basescan.org/tx/0x13e302593658f603a2b11d64d42efb477a1510b3b045ceeccccfb94a11a242eb) |
+| 2. Reaction: `BudgetGuard.react()` trips and requests freeze callbacks | Reactive Lasna | `0x9c8f2c3296eded39f9eee4876b1c6d55a589a73545368db1dca2cd050a9d9491` |
+| 3. Callback: `AgentWallet.freeze()` via the Reactive callback proxy | Base Sepolia | [0x9b7b…8c56](https://sepolia.basescan.org/tx/0x9b7be33960742e62c7d8f9a201ec550513975293a1021f0bc56eb601fb518c56) |
+| 4. Callback: `AgentWallet.freeze()` via the Reactive callback proxy | Unichain Sepolia | [0x28e6…82c6](https://sepolia.uniscan.xyz/tx/0x28e624c90bd50e826ffd6ba424acd9f80f7d3abbcb9313b8e9123657c62d82c6) |
+
+**Latency:** the origin block (23:27:26) and the Lasna reaction landed in the same second, and both freeze callbacks landed in blocks stamped 23:27:28, so the full loop took about 2 seconds. From the agent's side, both wallets already read as frozen 0.1s after its blocked payment's receipt came back, so the freeze arrived before its next move. More loops (budget limit, slow cross-chain drain, oversized payment) are linked on the [Self-test page](https://redoxwork.github.io/agent-budget-guard/selftest.html).
+
 ## Run tests
 
 ```bash
@@ -88,9 +101,26 @@ npx hardhat run scripts/deploy.js --network lasna
 npx hardhat run scripts/deploy.js --network baseSepolia
 npx hardhat run scripts/deploy.js --network unichainSepolia
 STEP=link npx hardhat run scripts/deploy.js --network lasna
+node agent/setup-agent.js        # spend-only agent key + demo payees
+node agent/policy.js "Max $50 a day, nothing over $10 at once, only pay weather-api, market-data and news-wire" --apply
 ```
 
 Addresses are saved to `deployments.json`.
+
+## Self-test in GitHub Actions
+`.github/workflows/selftest.yml` runs on every code change: unit tests, then `scripts/selftest.js` attacks the live testnet contracts with 4 scenarios, commits `site/data/selftest.json` and republishes the site. To enable it in a fork, add two repository secrets (testnet keys only):
+- `PRIVATE_KEY`: the owner/deployer key
+- `AGENT_PRIVATE_KEY`: the agent's spend-only key
+
+## Notes for building on Reactive Omni
+- Use `SYSTEM.requestCallbackV_1_0(...)` rather than the deprecated `Callback` event. The first argument of the callback payload is overwritten with the reactive contract's address, so destination contracts check both `msg.sender == callbackProxy` and that injected sender.
+- Omni has a single state (no RVM), so `subscribe()` can be called after deployment (`addWallet`).
+- Lasna rejects transactions with a zero priority fee; set `maxPriorityFeePerGas`.
+- The reactive contract's own balance pays for callbacks. Keep it topped up (`scripts/fund.js` + a plain transfer), or freezes stop arriving.
+- Don't name a destination function `pay(...)`: `AbstractPayer` already has `pay(uint256)`.
+
+## License
+MIT
 
 ## Roadmap for the buildathon
 - [x] Contracts and simulated full loop
